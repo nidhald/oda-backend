@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  backend:
+    image: registry.gitlab.com/mehdi_be/backend-odacollections:latest_dev
+    restart: always
+    networks:
+      - odacollections-dev
+      - odacollections-backend-dev
+      - mongo-dev
+
+networks:
+  odacollections-dev:
+    external: true
+  odacollections-backend-dev:
+    external: true
+  mongo-dev:
+    external: true

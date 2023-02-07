@@ -1,0 +1,61 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  SOURCE_IMG: INITIAL
+  PROD_TAG_IMAGE: latest
+  DEV_TAG_IMAGE: latest_dev
+
+prod_build:
+  stage: build
+  image: docker:19.03.15-git
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  only:
+  - master
+  services:
+    - docker:dind
+  script:
+    - docker login -u $REGISTRY_USER -p $REGISTRY_PASS $CI_REGISTRY
+    - docker build -f ./Dockerfile-prod -t $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$PROD_TAG_IMAGE -t $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$PROD_TAG_IMAGE
+
+production:
+  stage: deploy
+  only:
+    - master
+  when: manual
+  image: alpine
+  script:
+    - apk add --update curl
+#    - curl -XPOST https://rd-cloud.cadrinsitu.com/api/webhooks/3d54141b-0490-4b37-a81c-4a78ba7113ac
+
+dev_build:
+  stage: build
+  image: docker:19.03.15-git
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  only:
+  - develop
+  services:
+    - docker:19.03.15-dind
+
+  before_script:
+    - docker info
+
+  script:
+    - docker login -u $REGISTRY_USER -p $REGISTRY_PASS $CI_REGISTRY
+    - docker build -f ./Dockerfile-dev -t $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$DEV_TAG_IMAGE -t $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$DEV_TAG_IMAGE
+
+deploy_dev:
+  stage: deploy
+  only:
+  - develop
+  image: alpine
+  script:
+    - apk add --update curl
+    - curl -XPOST https://cloud.ciam-solutions.com/api/webhooks/2be88923-30d9-4956-b5fc-5dcc005dd203
